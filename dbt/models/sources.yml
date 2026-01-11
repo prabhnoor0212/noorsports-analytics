@@ -1,0 +1,18 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: users
+        description: "Raw user records generated locally."
+      - name: content
+        description: "Raw content metadata."
+      - name: sessions
+        description: "Raw user sessions (platform + geo)."
+      - name: user_content_events
+        description: "Raw event-level engagement signals."
+      - name: categories
+        description: "Raw category hierarchy nodes."
+      - name: content_category
+        description: "Raw bridge mapping content to category nodes."

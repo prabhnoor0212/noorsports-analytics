@@ -1,0 +1,78 @@
+version: 2
+
+models:
+  - name: stg_users
+    description: "Typed/cleaned users."
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: signup_ts
+        tests: [not_null]
+
+  - name: stg_content
+    description: "Typed/cleaned content metadata."
+    columns:
+      - name: content_id
+        tests: [not_null, unique]
+      - name: content_type
+        tests: [not_null]
+
+  - name: stg_sessions
+    description: "Typed/cleaned sessions with platform + geo."
+    columns:
+      - name: session_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_users')
+              field: user_id
+
+  - name: stg_user_content_events
+    description: "Typed/cleaned event-level engagement signals."
+    columns:
+      - name: event_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_users')
+              field: user_id
+      - name: session_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_sessions')
+              field: session_id
+      - name: content_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_content')
+              field: content_id
+
+  - name: stg_categories
+    description: "Typed category hierarchy nodes (sport/league/team)."
+    columns:
+      - name: category_id
+        tests: [not_null, unique]
+      - name: category_level
+        tests: [not_null]
+
+  - name: stg_content_category
+    description: "Bridge mapping content to categories (many-to-many)."
+    columns:
+      - name: content_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_content')
+              field: content_id
+      - name: category_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_categories')
+              field: category_id

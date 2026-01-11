@@ -1,0 +1,142 @@
+services:
+  warehouse:
+    image: postgres:16
+    container_name: noorsports_warehouse
+    environment:
+      POSTGRES_USER: ${WAREHOUSE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${WAREHOUSE_POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - warehouse_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${WAREHOUSE_POSTGRES_USER} -d ${WAREHOUSE_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow_db:
+    image: postgres:16
+    container_name: noorsports_airflow_db
+    environment:
+      POSTGRES_USER: ${AIRFLOW_DB_USER}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD}
+      POSTGRES_DB: ${AIRFLOW_DB_NAME}
+    volumes:
+      - airflow_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER} -d ${AIRFLOW_DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  airflow-init:
+    build:
+      context: ./airflow
+    container_name: noorsports_airflow_init
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      warehouse:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/${AIRFLOW_DB_NAME}
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+      _AIRFLOW_WWW_USER_USERNAME: ${AIRFLOW_ADMIN_USER}
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD}
+      _AIRFLOW_WWW_USER_FIRSTNAME: Airflow
+      _AIRFLOW_WWW_USER_LASTNAME: Admin
+      _AIRFLOW_WWW_USER_EMAIL: admin@example.com
+      _AIRFLOW_WWW_USER_ROLE: Admin
+
+      WAREHOUSE_HOST: warehouse
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: ${WAREHOUSE_POSTGRES_DB}
+      WAREHOUSE_USER: ${WAREHOUSE_POSTGRES_USER}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD}
+
+      DBT_PROFILES_DIR: /opt/airflow/dbt
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt:/opt/airflow/dbt
+    command: >
+      bash -lc "airflow db migrate && airflow users create -u ${AIRFLOW_ADMIN_USER} -p ${AIRFLOW_ADMIN_PASSWORD} -f Airflow -l Admin -r Admin -e admin@example.com"
+
+
+
+  airflow-webserver:
+    build:
+      context: ./airflow
+    container_name: noorsports_airflow_web
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      warehouse:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/${AIRFLOW_DB_NAME}
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "True"
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+
+      WAREHOUSE_HOST: warehouse
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: ${WAREHOUSE_POSTGRES_DB}
+      WAREHOUSE_USER: ${WAREHOUSE_POSTGRES_USER}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD}
+
+      DBT_PROFILES_DIR: /opt/airflow/dbt
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt:/opt/airflow/dbt
+    command: bash -lc "airflow webserver"
+
+  airflow-scheduler:
+    build:
+      context: ./airflow
+    container_name: noorsports_airflow_scheduler
+    depends_on:
+      airflow_db:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      warehouse:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@airflow_db:5432/${AIRFLOW_DB_NAME}
+      AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+
+      WAREHOUSE_HOST: warehouse
+      WAREHOUSE_PORT: "5432"
+      WAREHOUSE_DB: ${WAREHOUSE_POSTGRES_DB}
+      WAREHOUSE_USER: ${WAREHOUSE_POSTGRES_USER}
+      WAREHOUSE_PASSWORD: ${WAREHOUSE_POSTGRES_PASSWORD}
+
+      DBT_PROFILES_DIR: /opt/airflow/dbt
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./data:/opt/airflow/data
+      - ./scripts:/opt/airflow/scripts
+      - ./dbt:/opt/airflow/dbt
+    command: bash -lc "airflow scheduler"
+
+volumes:
+  warehouse_db:
+  airflow_db:

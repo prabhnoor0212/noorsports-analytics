@@ -1,0 +1,120 @@
+version: 2
+
+models:
+  - name: user_dim
+    description: "User dimension (SCD2 scaffold) with deterministic surrogate key."
+    columns:
+      - name: user_sk
+        tests: [not_null, unique]
+      - name: user_id
+        tests: [not_null]
+      - name: is_current
+        tests: [not_null]
+
+  - name: content_dim
+    description: "Content dimension (current-state)."
+    columns:
+      - name: content_id
+        tests: [not_null, unique]
+      - name: content_type_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('content_type_dim')
+              field: content_type_id
+
+  - name: content_type_dim
+    description: "Lookup dimension for content types."
+    columns:
+      - name: content_type_id
+        tests: [not_null, unique]
+
+  - name: platform_dim
+    description: "Lookup dimension for platform types."
+    columns:
+      - name: platform_id
+        tests: [not_null, unique]
+
+  - name: geo_dim
+    description: "Geography dimension (country/state/city)."
+    columns:
+      - name: geo_id
+        tests: [not_null, unique]
+
+  - name: date_dim
+    description: "Calendar date dimension generated for the observed date range."
+    columns:
+      - name: date_id
+        tests: [not_null, unique]
+      - name: date
+        tests: [not_null, unique]
+
+  - name: category_dim
+    description: "Unified sports entity dimension (sport/league/team nodes)."
+    columns:
+      - name: category_id
+        tests: [not_null, unique]
+      - name: category_level
+        tests: [not_null]
+
+  - name: content_category_bridge
+    description: "Many-to-many bridge mapping content to sport entities."
+    columns:
+      - name: content_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('content_dim')
+              field: content_id
+      - name: category_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('category_dim')
+              field: category_id
+
+  - name: category_closure_bridge
+    description: "Closure table for category hierarchy (ancestor->descendant)."
+    columns:
+      - name: ancestor_category_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('category_dim')
+              field: category_id
+      - name: descendant_category_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('category_dim')
+              field: category_id
+  - name: user_content_interaction_fact
+    description: "Fact table at grain user x session x content. Aggregated from raw events. Incremental with merge on content_session_id."
+    columns:
+      - name: content_session_id
+        tests: [not_null, unique]
+      - name: user_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_users')
+              field: user_id
+      - name: session_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_sessions')
+              field: session_id
+      - name: content_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_content')
+              field: content_id
+      - name: date_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('date_dim')
+              field: date_id
+
