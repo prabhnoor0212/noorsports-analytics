@@ -31,32 +31,33 @@ Synthetic data is generated locally to simulate realistic behavior.
 
 ### High-level flow
 
+```text
 +-----------------------------+
-| Airflow (LocalExecutor) |
-| DAG: noorsports_raw_ingest |
+| Airflow (LocalExecutor)     |
+| DAG: noorsports_raw_ingest  |
 +--------------+--------------+
-|
-v
+               |
+               v
 +-----------------------------+
-| Generate synthetic CSVs |
-| ./data/raw/.csv |
+| Generate synthetic CSVs     |
+| ./data/raw/*.csv            |
 +--------------+--------------+
-|
-v
+               |
+               v
 +-----------------------------+
 | Load raw tables in Postgres |
-| raw. (TRUNCATE + COPY) |
+| raw.*  (TRUNCATE + COPY)    |
 +--------------+--------------+
-|
-v
+               |
+               v
 +-----------------------------+
-| dbt run (staging + marts) |
-| dbt test |
+| dbt run (staging + marts)   |
+| dbt test                    |
 +--------------+--------------+
-|
-v
+               |
+               v
 +-----------------------------+
-| marts.* dimensional models |
+| marts.* dimensional models  |
 +-----------------------------+
 
 
