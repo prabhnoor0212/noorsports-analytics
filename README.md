@@ -59,7 +59,7 @@ Synthetic data is generated locally to simulate realistic behavior.
 +-----------------------------+
 | marts.* dimensional models  |
 +-----------------------------+
-
+```
 
 
 ### Key design principles
